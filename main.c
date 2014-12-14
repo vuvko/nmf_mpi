@@ -329,32 +329,20 @@ main(int argc, char *argv[])
         // Sending and receving matricies WHHt here
         for (col = 0; col < div_col; ++col) {
             //printf("[%d]: casting %d 1\n", h_rank, col);
-            if (w_rank == col) {
-                MPI_Bcast(&WHHt->data[0], rows * topics, MPI_DOUBLE, col, w_comm);
-            } else {
-                double *data = (double *)calloc(rows * topics, sizeof(data[0]));
-                MPI_Bcast(&data[0], rows * topics, MPI_DOUBLE, col, w_comm);
-                Matrix *WHHt_other = make_matrix(data, rows, topics);
-                free(data);
-                add(WHHt, WHHt_other);
-                WHHt_other = free_matrix(WHHt_other);
-            }
+            Matrix *WHHt_other = make_matrix_zero(rows, topics);
+            MPI_Bcast(&WHHt_other->data[0], rows * topics, MPI_DOUBLE, col, w_comm);
+            add(WHHt, WHHt_other);
+            WHHt_other = free_matrix(WHHt_other);
         }
         WH = free_matrix(WH);
         Matrix *VHt = dott(V, H);
         // Sending and receving matricies VHt here
         for (col = 0; col < div_col; ++col) {
             //printf("[%d]: casting %d 2\n", rank, col);
-            if (w_rank == col) {
-                MPI_Bcast(&VHt->data[0], rows * topics, MPI_DOUBLE, col, w_comm);
-            } else {
-                double *data = (double *)calloc(rows * topics, sizeof(data[0]));
-                MPI_Bcast(&data[0], rows * topics, MPI_DOUBLE, col, w_comm);
-                Matrix *VHt_other = make_matrix(data, rows, topics);
-                free(data);
-                add(VHt, VHt_other);
-                VHt_other = free_matrix(VHt_other);
-            }
+            Matrix *VHt_other = make_matrix_zero(rows, topics);
+            MPI_Bcast(&VHt_other->data[0], rows * topics, MPI_DOUBLE, col, w_comm);
+            add(VHt, VHt_other);
+            VHt_other = free_matrix(VHt_other);
         }
         gradW = copy_matrix(WHHt);
         subtract(gradW, VHt);
@@ -370,32 +358,20 @@ main(int argc, char *argv[])
         // Sending and receving matricies WtWH here
         for (row = 0; row < div_row; ++row) {
             //printf("[%d]: casting %d 3\n", rank, row);
-            if (h_rank == row) {
-                MPI_Bcast(&WtWH->data[0], topics * cols, MPI_DOUBLE, row, h_comm);
-            } else {
-                double *data = (double *)calloc(topics * cols, sizeof(data[0]));
-                MPI_Bcast(&data[0], topics * cols, MPI_DOUBLE, row, h_comm);
-                Matrix *WtWH_other = make_matrix(data, topics, cols);
-                free(data);
-                add(WtWH, WtWH_other);
-                WtWH_other = free_matrix(WtWH_other);
-            }
+            Matrix *WtWH_other = make_matrix_zero(topics, cols);
+            MPI_Bcast(&WtWH->data[0], topics * cols, MPI_DOUBLE, row, h_comm);
+            add(WtWH, WtWH_other);
+            WtWH_other = free_matrix(WtWH_other);
         }
         WH = free_matrix(WH);
         Matrix *WtV = tdot(W, V);
         // Sending and receving matricies WtV here
         for (row = 0; row < div_row; ++row) {
             //printf("[%d]: casting %d 4\n", rank, row);
-            if (h_rank == col) {
-                MPI_Bcast(&WtV->data[0], topics * cols, MPI_DOUBLE, row, h_comm);
-            } else {
-                double *data = (double *)calloc(topics * cols, sizeof(data[0]));
-                MPI_Bcast(&data[0], topics * cols, MPI_DOUBLE, row, h_comm);
-                Matrix *WtV_other = make_matrix(data, topics, cols);
-                free(data);
-                add(WtV, WtV_other);
-                WtV_other = free_matrix(WtV_other);
-            }
+            Matrix *WtV_other = make_matrix_zero(topics, cols);
+            MPI_Bcast(&WtV->data[0], topics * cols, MPI_DOUBLE, row, h_comm);
+            add(WtV, WtV_other);
+            WtV_other = free_matrix(WtV_other);
         }
         gradH = copy_matrix(WtWH);
         subtract(gradH, WtV);
