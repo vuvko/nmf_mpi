@@ -397,3 +397,24 @@ loss(Matrix *V, Matrix *W, Matrix *H) {
     F = free_matrix(F);
     return loss;
 }
+
+double
+stopping(Matrix *grad, Matrix *matrix)
+{
+    if (!grad || !matrix) {
+        return -1;
+    }
+    double criteria = 0;
+    int row, col;
+    double eps = 1e-6;
+    #pragma omp parallel for
+    for (col = 0; col < matrix->cols; ++col) {
+        for (row = 0; row < matrix->rows; ++row) {
+            if (get(grad, row, col) > -eps || get(matrix, row, col) < eps) {
+                continue;
+            }
+            criteria += sqr(get(grad, row, col));
+        }
+    }
+    return criteria;
+}

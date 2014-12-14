@@ -50,5 +50,6 @@ void save_matrix(FILE *fout, Matrix *matrix);
 void print_matrix(Matrix *matrix);
 
 double loss(Matrix *V, Matrix *w, Matrix *H);
+double stopping(Matrix *grad, Matrix *matrix);
 
 #endif

@@ -1,4 +1,5 @@
-rows = 100
-cols = 100
-topics = 15
-max_iter = 15
+topics = 50
+max_iter = 100
+seed = 101
+dataset = data/docword.nips.txt
+num_threads = 8
