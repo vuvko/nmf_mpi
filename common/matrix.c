@@ -1,8 +1,11 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#include <omp.h>
+
 #include "matrix.h"
 #include "common.h"
+
 /*
 typedef struct Matrix
 {
@@ -36,6 +39,24 @@ Matrix *make_matrix_zero(int rows, int cols)
     matrix->cols = cols;
     matrix->data = (double *)calloc(rows * cols, sizeof(matrix->data[0]));
     matrix->transposed = 0;
+    return matrix;
+}
+
+Matrix *make_matrix_random(int rows, int cols, Random *rnd)
+{
+    if (!rnd) {
+        return NULL;
+    }
+    Matrix *matrix = make_matrix_zero(rows, cols);
+    if (!matrix) {
+        return NULL;
+    }
+    unsigned i, j;
+    for (j = 0; j < cols; ++j) {
+        for (i = 0; i < rows; ++i) {
+            matrix->data[midx(matrix, i, j)] = rnd->ops->next(rnd);
+        }
+    }
     return matrix;
 }
 
@@ -106,7 +127,7 @@ Matrix *dot(Matrix *A, Matrix *B)
     if (!A || !B) {
         return NULL;
     }
-    unsigned i, j, k;
+    unsigned idx;
     int Arows = A->rows;
     int Acols = A->cols;
     int Brows = B->rows;
@@ -123,15 +144,40 @@ Matrix *dot(Matrix *A, Matrix *B)
         return NULL;
     }
     Matrix *C = make_matrix_zero(Arows, Bcols);
-    for (j = 0; j < Bcols; ++j) {
-        for (i = 0; i < Arows; ++i) {
-            double sum = 0.0;
-            for (k = 0; k < Acols; ++k) {
-                sum += get(A, i, k) * get(B, k, j);
-            }
-            C->data[midx(C, i, j)] = sum;
+    #pragma omp parallel for
+    for (idx = 0; idx < Arows * Bcols; ++idx) {
+        unsigned i, j;
+        i = idx % Arows;
+        j = idx / Arows;
+        double sum = 0.0;
+        unsigned k;
+        for (k = 0; k < Acols; ++k) {
+            sum += get(A, i, k) * get(B, k, j);
         }
+        C->data[midx(C, i, j)] = sum;
     }
+    return C;
+}
+
+Matrix *tdot(Matrix *A, Matrix *B)
+{
+    if (!A || !B) {
+        return NULL;
+    }
+    A->transposed ^= 1;
+    Matrix *C = dot(A, B);
+    A->transposed ^= 1;
+    return C;
+}
+
+Matrix *dott(Matrix *A, Matrix *B)
+{
+    if (!A || !B) {
+        return NULL;
+    }
+    B->transposed ^= 1;
+    Matrix *C = dot(A, B);
+    B->transposed ^= 1;
     return C;
 }
 
@@ -151,6 +197,7 @@ elementwise(Matrix *A, Matrix *B, char op)
             return;
         }
     }
+    #pragma omp parallel for
     for (j = 0; j < A->cols; ++j) {
         for (i = 0; i < A->rows; ++i) {
             switch (op) {
@@ -240,28 +287,95 @@ midx(Matrix *matrix, unsigned row, unsigned col)
     return col * matrix->rows + row;
 }
 
-void
-print_matrix(Matrix *matrix)
+Matrix *read_matrix(FILE *fin)
+{
+    if (!fin) {
+        return NULL;
+    }
+    unsigned rows = 0, cols = 0;
+    fscanf(fin, "%u%u", &cols, &rows);
+    Matrix *matrix = make_matrix_zero(rows, cols);
+    if (!matrix) {
+        return NULL;
+    }
+    unsigned i, j;
+    double val = 0;
+    for (j = 0; j < cols; ++j) {
+        for (i = 0; i < rows; ++i) {
+            fscanf(fin, "%lf", &val);
+            matrix->data[midx(matrix, i, j)] = val;
+        }
+    }
+    return matrix;
+}
+
+unsigned
+mrows(Matrix *matrix)
 {
     if (!matrix) {
+        return 0;
+    }
+    return matrix->rows;
+}
+
+unsigned
+mcols(Matrix *matrix)
+{
+    if (!matrix) {
+        return 0;
+    }
+    return matrix->cols;
+}
+
+Matrix *read_matrix_uci(FILE *fin)
+{
+    if (!fin) {
+        return NULL;
+    }
+    unsigned rows = 0, cols = 0, nnz = 0;
+    fscanf(fin, "%u%u%u", &cols, &rows, &nnz);
+    Matrix *matrix = make_matrix_zero(rows, cols);
+    if (!matrix) {
+        return NULL;
+    }
+    unsigned i = 0, j = 0, line;
+    double val = 0;
+    for (line = 0; line < nnz; ++line) {
+        fscanf(fin ,"%u%u%lf", &j, &i, &val);
+        matrix->data[midx(matrix, i - 1, j - 1)] = val;
+    }
+    return matrix;
+}
+
+void
+save_matrix(FILE *fout, Matrix *matrix)
+{
+    if (!matrix || !fout) {
         fprintf(stderr, "Matrix is NULL.\n");
+        return;
     }
     int i, j;
     if (matrix->transposed) {
         for (i = 0; i < matrix->cols; ++i) {
             for (j = 0; j < matrix->rows; ++j) {
-                printf("%.2f ", matrix->data[i * matrix->rows + j]);
+                fprintf(fout, "%.2lf ", matrix->data[i * matrix->rows + j]);
             }
-            printf("\n");
+            fprintf(fout, "\n");
         }
     } else {
         for (j = 0; j < matrix->rows; ++j) {
             for (i = 0; i < matrix->cols; ++i) {
-                printf("%.2f ", matrix->data[i * matrix->rows + j]);
+                fprintf(fout, "%.2lf ", matrix->data[i * matrix->rows + j]);
             }
-            printf("\n");
+            fprintf(fout, "\n");
         }
     }
+}
+
+void
+print_matrix(Matrix *matrix)
+{
+    save_matrix(stdout, matrix);
 }
 
 double

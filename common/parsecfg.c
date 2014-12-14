@@ -31,7 +31,7 @@ ConfigFile *config_free(ConfigFile *config)
 {
     if (config != NULL) {
         int i;
-        for (i = 0; i < config->used; i++) {
+        for (i = 0; i < config->alc; i++) {
             free(config->v[i].name);
             free(config->v[i].value);
         }
@@ -76,7 +76,7 @@ config_read(const char *path)
         line++;
         char *p = NULL;
         if ((p = strchr(str, '#'))) {
-            *p = 0;
+            *p = '\0';
         }
         p = str;
         len = strlen(p);
@@ -120,7 +120,7 @@ config_read(const char *path)
         for (; *cur != '\n' && *cur != '\0'; cur++){}
         *cur = '\0';
         if (cfg->used == cfg->alc) {
-            cfg->alc *= 2;
+            cfg->alc = (cfg->alc * 1.618) + 1;
             cfg->v = (ConfigEntry *) realloc(cfg->v, 
                 cfg->alc * sizeof(cfg->v[0]));
         }
