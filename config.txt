@@ -1,0 +1,4 @@
+rows = 100
+cols = 100
+topics = 15
+max_iter = 15
